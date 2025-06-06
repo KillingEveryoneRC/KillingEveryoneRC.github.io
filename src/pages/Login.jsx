@@ -1,18 +1,35 @@
 import React, { useState } from "react";
-import { auth } from "../firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setError("");
+
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            alert("Successfully logged in!");
+            const response = await fetch("http://localhost:5000/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || "Login failed");
+            }
+
+            const data = await response.json();
+            localStorage.setItem("token", data.token); // зберігаємо токен
+            alert("Успішний вхід!");
+
+            navigate("/profile"); // Перенаправлення після входу
         } catch (err) {
             setError(err.message);
         }
@@ -29,6 +46,7 @@ const Login = () => {
                         id="email"
                         type="email"
                         placeholder="Enter your email"
+                        value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
                     />
@@ -40,6 +58,7 @@ const Login = () => {
                         id="password"
                         type="password"
                         placeholder="Enter your password"
+                        value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                     />

@@ -1,98 +1,85 @@
 import React, { useState, useEffect } from "react";
-import { auth, db } from "../firebase";
-import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import "../styles/profile.css";
 
 const Profile = () => {
     const navigate = useNavigate();
-    const user = auth.currentUser;
 
     const [name, setName] = useState("");
     const [experience, setExperience] = useState("");
     const [skills, setSkills] = useState("");
     const [isEditing, setIsEditing] = useState(false);
 
-    const [jobTitle, setJobTitle] = useState("");
-    const [company, setCompany] = useState("");
-    const [salary, setSalary] = useState("");
-    const [location, setLocation] = useState("");
-    const [type, setType] = useState("");
-    const [experienceJob, setExperienceJob] = useState("");
+    const token = localStorage.getItem("token");
 
-    // 🔽 Завантаження профілю при вході
+    // 🔽 Завантаження профілю
     useEffect(() => {
-        if (user) {
-            const fetchProfile = async () => {
-                const docRef = doc(db, "users", user.uid);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setName(data.name || "");
-                    setExperience(data.experience || "");
-                    setSkills(data.skills || "");
+        const fetchProfile = async () => {
+            try {
+                const res = await fetch("http://localhost:5000/api/profile", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.message || "Failed to fetch profile");
                 }
-            };
-            fetchProfile();
+
+                setName(data.name || "");
+                setExperience(data.experience || "");
+                setSkills(data.skills || "");
+            } catch (error) {
+                console.error("Error loading profile:", error.message);
+                alert("Failed to load profile: " + error.message);
+                navigate("/login");
+            }
+        };
+
+        if (token) {
+            fetchProfile(); // викликаємо функцію
+        } else {
+            alert("You must be logged in.");
+            navigate("/login");
         }
-    }, [user]);
+    }, [navigate, token]);
 
     // 🔼 Збереження профілю
     const handleSave = async () => {
-        if (!user) return;
         try {
-            await setDoc(doc(db, "users", user.uid), {
-                name,
-                experience,
-                skills
+            const res = await fetch("http://localhost:5000/api/profile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    name,
+                    experience,
+                    skills,
+                }),
             });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.message || "Failed to save profile");
+            }
+
             alert("Profile updated!");
             setIsEditing(false);
         } catch (error) {
-            console.error("Error saving profile:", error);
-            alert("Failed to save profile.");
+            console.error("Error saving profile:", error.message);
+            alert("Failed to save profile: " + error.message);
         }
     };
 
-    const handleLogout = async () => {
-        await signOut(auth);
+    const handleLogout = () => {
+        localStorage.removeItem("token");
         alert("You have been logged out.");
         navigate("/login");
-    };
-
-    const handleAddVacancy = async () => {
-        if (!jobTitle || !company || !salary) {
-            alert("Please fill in required fields.");
-            return;
-        }
-
-        try {
-            await addDoc(collection(db, "vacancies"), {
-                title: jobTitle,
-                company,
-                salary,
-                location,
-                type,
-                experience: experienceJob,
-                createdBy: user.uid,
-                createdAt: serverTimestamp()
-            });
-
-            // Reset form
-            setJobTitle("");
-            setCompany("");
-            setSalary("");
-            setLocation("");
-            setType("");
-            setExperienceJob("");
-
-            alert("Vacancy added!");
-        } catch (err) {
-            console.error("Error adding vacancy:", err);
-            alert("Failed to add vacancy.");
-        }
     };
 
     return (
@@ -139,44 +126,6 @@ const Profile = () => {
                         Logout
                     </button>
                 </div>
-            </div>
-            {/* Add Vacancy Form */}
-            <div className="add-vacancy">
-                <h3>Add New Vacancy</h3>
-                <input
-                    placeholder="Job title"
-                    value={jobTitle}
-                    onChange={(e) => setJobTitle(e.target.value)}
-                />
-                <input
-                    placeholder="Company"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                />
-                <input
-                    placeholder="Salary ($)"
-                    value={salary}
-                    onChange={(e) => setSalary(e.target.value)}
-                />
-                <input
-                    placeholder="Location"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                />
-                <input
-                    placeholder="Type (Online/Offline)"
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                />
-                <input
-                    placeholder="Experience"
-                    value={experienceJob}
-                    onChange={(e) => setExperienceJob(e.target.value)}
-                />
-
-                <button className="button" onClick={handleAddVacancy}>
-                    Submit Vacancy
-                </button>
             </div>
         </div>
     );

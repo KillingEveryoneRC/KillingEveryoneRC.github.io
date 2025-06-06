@@ -1,18 +1,32 @@
 import React, { useState } from "react";
-import { auth } from "../firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Register = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const navigate = useNavigate();
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        setError("");
+
         try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            alert("Successfully registered!");
+            const response = await fetch("http://localhost:5000/api/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || "Registration failed");
+            }
+
+            alert("Успішна реєстрація!");
+            navigate("/login");
         } catch (err) {
             setError(err.message);
         }
@@ -29,6 +43,7 @@ const Register = () => {
                         id="email"
                         type="email"
                         placeholder="Enter your email"
+                        value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
                     />
@@ -40,6 +55,7 @@ const Register = () => {
                         id="password"
                         type="password"
                         placeholder="Enter your password"
+                        value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                     />

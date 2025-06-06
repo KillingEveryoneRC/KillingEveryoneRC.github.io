@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "./firebase";
 
 // Pages
 import Home from "./pages/Home";
@@ -15,13 +13,13 @@ import "./App.css";
 function App() {
     const [user, setUser] = useState(null);
 
-    // Listen for auth changes
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-        });
-
-        return () => unsubscribe();
+        const token = localStorage.getItem("token");
+        if (token) {
+            setUser({ token }); // Позначаємо, що користувач є
+        } else {
+            setUser(null);
+        }
     }, []);
 
     return (
@@ -32,7 +30,6 @@ function App() {
                 <div className="menu">
                     <Link to="/">Main</Link>
                     <Link to="/vacancies">Vacancies</Link>
-
                     {!user && <Link to="/login">Login</Link>}
                     {user && <Link to="/profile">Profile</Link>}
                 </div>
@@ -43,7 +40,7 @@ function App() {
                 <Route path="/vacancies" element={<Vacancies />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                {user && <Route path="/profile" element={<Profile />} />}
+                <Route path="/profile" element={<Profile />} />
             </Routes>
 
             <footer>
